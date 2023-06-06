@@ -11,14 +11,36 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
+def optimal_number_of_clusters(data):
+        # FUNCTIONS
+        cost = []
+        for n in range(1, 10):
+            kmeans = KMeans(n_clusters=n)
+            kmeans.fit(X=data)
+            cost.append(kmeans.inertia_)
+        x1, y1 = 2, cost[0]
+        x2, y2 = 20, cost[len(cost)-1]
+        distances = []
+        for i in range(len(cost)):
+            x0 = i+2
+            y0 = cost[i]
+            numerator = np.abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1)
+            denominator = np.sqrt((y2 - y1)**2 + (x2 - x1)**2)
+            distances.append(numerator/denominator)
+        n_clusters = distances.index(max(distances)) + 2
+        plt.plot(range(1, 10), cost, "--o")
+        plt.plot(n_clusters, cost[n_clusters-1], "o", color="red")
+        plt.xlabel("Number of Clusters")
+        plt.ylabel("Squared Error")
+        plt.show()
+        return n_clusters
 
-
-
+loc = ("./Data/")
 # =============================================================================
 # READ IN DATASET
 # =============================================================================
 if False:
-    loc = ("./Data/")
+
     df = pd.read_csv("./Data/datasetForPCAandUnsupervised1.csv") 
 # =============================================================================
 #     df = df1.sample(frac=0.025, replace=True, random_state=1)
@@ -27,7 +49,7 @@ if False:
 # =============================================================================
 #     df.to_csv(loc+"datasetForPCAandUnsupervised.csv", index=False)
 # =============================================================================
-if False:    
+if True:    
 
     loc = ("./Data/")
     df = pd.read_csv(loc+"datasetForPCAandUnsupervised.csv")
@@ -266,7 +288,7 @@ if False:
     rgb.save(PDF_FILE, 'PDF', resoultion=100.0)
 
 
-if False:
+if True:
 
     # =============================================================================
     # Select predictive features
@@ -295,9 +317,11 @@ if False:
         
     # Let's Drop Class column and see the correlation Matrix & Pairplot Before using this dataframe for PCA as PCA should only be perfromed on independent attribute
     
-    dev = df[col_list]
-    #print("After Dropping: ", cleandf)
-    correlation_heatmap(dev, 30,15)
+# =============================================================================
+#     dev = df[col_list]
+#     #print("After Dropping: ", cleandf)
+#     correlation_heatmap(dev, 30,15)
+# =============================================================================
     
     # =============================================================================
     # # =============================================================================
@@ -330,7 +354,13 @@ if False:
     test.to_csv("test.csv")
     
     print("")
-    
+
+
+
+
+    train = pd.read_csv("train.csv", index_col=0)
+    test = pd.read_csv("test.csv", index_col=0)
+        
     # =============================================================================
     # Standardize train and test sample which means that we get a z-score
     # =============================================================================
@@ -384,7 +414,35 @@ if False:
     import pickle
     filename = 'PCA.sav'
     pickle.dump(pca, open(filename, 'wb'))
+
+    print("")
+    print("# number of components")
+    n_pcs= pca.components_.shape[0]
+    print(n_pcs)
+    print("")
     
+    # get the index of the most important feature on EACH component
+    # LIST COMPREHENSION HERE
+    most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
+    print("Most important")
+    print(most_important)
+    print("")
+    
+    
+
+    initial_feature_names = col_list
+    # get the names
+    most_important_names = [initial_feature_names[most_important[i]] for i in range(n_pcs)]
+    
+    # LIST COMPREHENSION HERE AGAIN
+    dic = {'PC{}'.format(i): most_important_names[i] for i in range(n_pcs)}
+    
+    # build the dataframe
+    dff = pd.DataFrame(dic.items())
+    print(dff)
+    
+    
+if True:    
     # =============================================================================
     # Incorporate the newly obtained PCA scores in the K-means algorithm
     # =============================================================================
@@ -392,24 +450,28 @@ if False:
     # =============================================================================
     # Select optimal number of clusters    
     # =============================================================================
-    
-    print("")    
-    print("Select optimal number of clusters")
+    print("# OPTIMAL NUMBER OF CLUSTERS CALCULATION")
     from sklearn.cluster import KMeans
-    wcss = []
-    for k in range(1,20):
-        kmeans = KMeans(n_clusters=k, init="k-means++")
-        kmeans.fit(scores_pca)
-        wcss.append(kmeans.inertia_)
-    plt.figure(figsize=(12,6))    
-    plt.grid()
-    plt.plot(range(1,20),wcss, linewidth=2, color="red", marker ="8")
-    plt.xlabel("Number of clusters")
-    plt.title("K-means with PCA clustering")
-    plt.xticks(np.arange(1,20,1))
-    plt.ylabel("WCSS")
-    plt.show()
-    print("")
+    n_clusters = optimal_number_of_clusters(scores_pca)
+# =============================================================================
+#     print("")    
+#     print("Select optimal number of clusters")
+#     from sklearn.cluster import KMeans
+#     wcss = []
+#     for k in range(1,20):
+#         kmeans = KMeans(n_clusters=k, init="k-means++")
+#         kmeans.fit(scores_pca)
+#         wcss.append(kmeans.inertia_)
+#     plt.figure(figsize=(12,6))    
+#     plt.grid()
+#     plt.plot(range(1,20),wcss, linewidth=2, color="red", marker ="8")
+#     plt.xlabel("Number of clusters")
+#     plt.title("K-means with PCA clustering")
+#     plt.xticks(np.arange(1,20,1))
+#     plt.ylabel("WCSS")
+#     plt.show()
+#     print("")
+# =============================================================================
     
     # =============================================================================
     # Train the model
@@ -575,7 +637,7 @@ if False:
 
 
 
-if True:
+if False:
     loc = "./Data/"
     df_test = pd.read_csv(loc+"df_test.csv")
     d = df_test[["num_tl_120dpd_2m",	"num_tl_30dpd",	"num_tl_90g_dpd_24m","tot_cur_bal","last_fico_range_high",'annual_inc','dti','inq_last_6mths','revol_util','total_acc','Segment K_means PCA']]
@@ -833,3 +895,116 @@ if True:
 #         
 # 
 # =============================================================================
+
+if False:
+    
+    # =============================================================================
+    # Check shape of dataset
+    # =============================================================================
+    train = pd.read_csv("train.csv", index_col=0)
+    test = pd.read_csv("test.csv", index_col=0)
+    
+
+    col_list = list(train.columns)
+    
+    col_list.remove("Target")
+    col_list.remove("id")
+    col_list.remove("url")
+    col_list.remove("zip_code")
+    col_list.remove("TrainFlag")
+    
+    
+    
+    print("")
+    
+    # =============================================================================
+    # Standardize train and test sample which means that we get a z-score
+    # =============================================================================
+    
+    print("Standardize Features")
+    
+    from sklearn.preprocessing import StandardScaler
+    sc = StandardScaler().set_output(transform="pandas")
+    
+    # Fit only on Train sample
+    train_transformed = sc.fit_transform(train[col_list])
+    
+    # Transform Test sample
+    test_transformed = sc.transform(test[col_list])
+    
+    train_transformed.to_csv(loc+"trainTransformed.csv",index=False)   
+    test_transformed.to_csv(loc+"testTransformed.csv",index=False)   
+    print("")
+    
+    X_train = train_transformed.values
+    X_test = test_transformed.values
+    
+    print("")    
+    print("Select optimal number of clusters")
+    from sklearn.cluster import KMeans
+    wcss = []
+    for k in range(1,20):
+        kmeans = KMeans(n_clusters=k, init="k-means++")
+        kmeans.fit(train_transformed)
+        wcss.append(kmeans.inertia_)
+    plt.figure(figsize=(12,6))    
+    plt.grid()
+    plt.plot(range(1,20),wcss, linewidth=2, color="red", marker ="8")
+    plt.xlabel("Number of clusters")
+    plt.title("K-means with PCA clustering")
+    plt.xticks(np.arange(1,20,1))
+    plt.ylabel("WCSS")
+    plt.show()
+    print("")
+
+
+    kmeans = KMeans(
+        init="random",
+        n_clusters=4,
+        n_init=10,
+        max_iter=300,
+        random_state=1234
+    )
+    kmeans.fit(train_transformed, )
+    test_transformed['cluster'] = kmeans.predict(test_transformed)
+    print(test_transformed)
+
+    # =============================================================================
+    # Visualize clusters for top 3 components - Test Sample
+    # =============================================================================
+    import matplotlib.pyplot as plt
+    from matplotlib import cm
+    from mpl_toolkits import mplot3d
+    
+    fig = plt.figure(figsize=(15,15))
+    
+    ax = plt.axes(projection='3d')
+    
+    df_test = test_transformed.sort_values(by=['cluster'])
+    
+    for s in df_test['cluster'].unique():
+        ax.scatter(df_test.dti[df_test['cluster']==s],df_test.fico_range_low[df_test['cluster']==s],df_test.annual_inc[df_test['cluster']==s],label=s, alpha=0.5)
+    sns.set_style("darkgrid")
+    sns.set_context("talk")   
+    plt.xlabel("Debt-to-Income")
+    plt.ylabel("FICO Score")
+    plt.title("K-means with PCA clustering - Top 3 Components - Test Sample")
+    ax.set_zlabel("Income")
+    ax.legend()
+    plt.show()
+    
+    
+    # =============================================================================
+    # Visualize clusters for top 2 components - Test Sample
+    # =============================================================================
+    
+    x_axis = df_test['dti']
+    y_axis = df_test['fico_range_low']
+    plt.figure(figsize=(30,30))
+    
+    sns.scatterplot(x=x_axis, y=y_axis, hue=df_test['cluster'], palette = ["blue","orange","green","red"])
+# =============================================================================
+#     ,"purple","brown","pink","gray","olive","cyan"])
+# =============================================================================
+    plt.title("Clusters by PCA Components - Test Sample")
+    plt.show()
